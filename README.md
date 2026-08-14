@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # SMART GROCERY SHOP MANAGEMENT SYSTEM
 ### A Data Structures & Algorithms University Project (Pure C)
 
@@ -281,3 +282,7 @@ Before inserting, `findProduct()` / `findEmployee()` searches for an
 existing record with that ID (`O(log n)` for products via the AVL tree,
 `O(n)` for employees via the linked list) and the Add operation is rejected
 with an error message if a match is found.
+=======
+# smart-grocery-shop-management
+A console-based Smart Grocery Shop Management System written in pure C, using AVL Trees, Stacks, and Linked Lists. Built as a Data Structures &amp; Algorithms university team project — handles inventory, sales, purchases, accounting, employees, attendance, and file-based data persistence.
+>>>>>>> 02ea32066d8817f800c9ef2034ddc05b2c98cecf
