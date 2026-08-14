@@ -1,196 +1,705 @@
-/* ============================================================
-   accounting.c
-   Handles all money in/out of the shop:
-     - Manual Add Income / Add Expense
-     - Automatic income from Sales, automatic expense from
-       Restocking and Employee Salary (called by other modules)
-     - View transactions, Daily / Monthly accounting
-     - Total Income, Total Expense, Profit/Loss
-   Transactions are kept in the linked list defined in linkedlist.c
-   ============================================================ */
+/*
+    accounting.c
+
+    This file manages all money transactions of the shop.
+
+    Features:
+    1. Add Income
+    2. Add Expense
+    3. Automatic Income from Sales
+    4. Automatic Expense from Restocking
+    5. Automatic Expense from Employee Salary
+    6. View Transactions
+    7. Daily Accounting
+    8. Monthly Accounting
+    9. Total Income
+    10. Total Expense
+    11. Profit / Loss
+    12. Undo Account Transaction
+
+    Transactions are stored in the linked list from linkedlist.c.
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+
+/* ================= TRANSACTION STRUCTURE ================= */
+
 typedef struct Transaction {
+
     int id;
-    char type[10];
-    char category[30];
+
+    char type[10];          // INCOME or EXPENSE
+    char category[30];      // Sales, Restocking, Salary, etc.
+
     float amount;
+
     char date[12];
+
     char description[100];
+
     struct Transaction *next;
+
 } Transaction;
 
-/* externs from linkedlist.c */
+
+/* ================= EXTERNAL FUNCTIONS ================= */
+
+/*
+    These variables/functions are created in other files.
+*/
+
+/* From linkedlist.c */
 extern Transaction *transactionHead;
 extern int addTransaction(Transaction t);
 extern int removeTransactionById(int id);
 
-/* externs from stack.c */
-extern void pushUndoAccount(const char *opType, int transactionId);
 
-/* externs from utils.c */
-extern void readString(const char *prompt, char *buf, int size);
-extern float readFloat(const char *prompt);
-extern int readInt(const char *prompt);
-extern void getCurrentDate(char *buf);
+/* From stack.c */
+extern void pushUndoAccount(const char *operation, int transactionID);
 
-/* ---- prototypes ---- */
-int addIncomeAuto(const char *category, float amount, const char *description);
-int addExpenseAuto(const char *category, float amount, const char *description);
+
+/* From utils.c */
+extern void readString(const char *message, char *text, int size);
+extern float readFloat(const char *message);
+extern int readInt(const char *message);
+extern void getCurrentDate(char *date);
+
+
+/* ================= FUNCTION PROTOTYPES ================= */
+
+/* Automatic transactions */
+int addIncomeAuto(const char *category, float amount,
+                  const char *description);
+
+int addExpenseAuto(const char *category, float amount,
+                   const char *description);
+
+
+/* Manual transactions */
 void addIncomeManual(void);
 void addExpenseManual(void);
+
+
+/* Reports */
 void viewTransactions(void);
 void dailyAccounting(void);
 void monthlyAccounting(void);
+
 float totalIncome(void);
 float totalExpense(void);
+
 void profitLoss(void);
+
+
+/* Menu */
 void accountingMenu(void);
 
-int addIncomeAuto(const char *category, float amount, const char *description) {
-    Transaction t;
-    strcpy(t.type, "INCOME");
-    strcpy(t.category, category);
-    t.amount = amount;
-    getCurrentDate(t.date);
-    strncpy(t.description, description, sizeof(t.description) - 1);
-    t.description[sizeof(t.description) - 1] = '\0';
-    return addTransaction(t);
+
+/* =========================================================
+   ADD AUTOMATIC INCOME
+   Used by Sales module.
+   Example:
+   Customer buys products for 500 BDT
+   -> 500 BDT is automatically added as income.
+   ========================================================= */
+
+int addIncomeAuto(const char *category,
+                  float amount,
+                  const char *description)
+{
+    Transaction transaction;
+
+    /* Set transaction type */
+    strcpy(transaction.type, "INCOME");
+
+    /* Set category */
+    strcpy(transaction.category, category);
+
+    /* Set amount */
+    transaction.amount = amount;
+
+    /* Get today's date */
+    getCurrentDate(transaction.date);
+
+    /* Add description */
+    strncpy(transaction.description,
+            description,
+            sizeof(transaction.description) - 1);
+
+    transaction.description[
+        sizeof(transaction.description) - 1
+    ] = '\0';
+
+
+    /* Add transaction to linked list */
+    return addTransaction(transaction);
 }
 
-int addExpenseAuto(const char *category, float amount, const char *description) {
-    Transaction t;
-    strcpy(t.type, "EXPENSE");
-    strcpy(t.category, category);
-    t.amount = amount;
-    getCurrentDate(t.date);
-    strncpy(t.description, description, sizeof(t.description) - 1);
-    t.description[sizeof(t.description) - 1] = '\0';
-    return addTransaction(t);
+
+/* =========================================================
+   ADD AUTOMATIC EXPENSE
+   Used by Restocking and Employee modules.
+
+   Example:
+   Restocking costs 1000 BDT
+   -> 1000 BDT is automatically added as expense.
+   ========================================================= */
+
+int addExpenseAuto(const char *category,
+                   float amount,
+                   const char *description)
+{
+    Transaction transaction;
+
+    /* Set transaction type */
+    strcpy(transaction.type, "EXPENSE");
+
+    /* Set category */
+    strcpy(transaction.category, category);
+
+    /* Set amount */
+    transaction.amount = amount;
+
+    /* Get today's date */
+    getCurrentDate(transaction.date);
+
+    /* Add description */
+    strncpy(transaction.description,
+            description,
+            sizeof(transaction.description) - 1);
+
+    transaction.description[
+        sizeof(transaction.description) - 1
+    ] = '\0';
+
+
+    /* Add transaction to linked list */
+    return addTransaction(transaction);
 }
 
-void addIncomeManual(void) {
-    char category[30], desc[100];
+
+/* =========================================================
+   MANUAL ADD INCOME
+   ========================================================= */
+
+void addIncomeManual(void)
+{
+    char category[30];
+    char description[100];
+
     float amount;
-    printf("\n--- Add Income ---\n");
-    readString("Category (e.g. Other Income): ", category, sizeof(category));
-    amount = readFloat("Amount: ");
-    if (amount <= 0) { printf("Amount must be positive.\n"); return; }
-    readString("Description: ", desc, sizeof(desc));
-    int id = addIncomeAuto(category, amount, desc);
-    pushUndoAccount("ACCOUNT_INCOME", id);
-    printf("Income of %.2f BDT recorded successfully. (Transaction #%d)\n", amount, id);
+
+    int transactionID;
+
+
+    printf("\n========== ADD INCOME ==========\n");
+
+
+    /* Get category */
+    readString(
+        "Enter category: ",
+        category,
+        sizeof(category)
+    );
+
+
+    /* Get amount */
+    amount = readFloat("Enter amount: ");
+
+
+    /* Check amount */
+    if (amount <= 0)
+    {
+        printf("Amount must be greater than 0.\n");
+        return;
+    }
+
+
+    /* Get description */
+    readString(
+        "Enter description: ",
+        description,
+        sizeof(description)
+    );
+
+
+    /* Add income */
+    transactionID = addIncomeAuto(
+        category,
+        amount,
+        description
+    );
+
+
+    /* Save operation for Undo */
+    pushUndoAccount(
+        "ACCOUNT_INCOME",
+        transactionID
+    );
+
+
+    printf(
+        "Income added successfully.\n"
+        "Amount: %.2f BDT\n"
+        "Transaction ID: %d\n",
+        amount,
+        transactionID
+    );
 }
 
-void addExpenseManual(void) {
-    char category[30], desc[100];
+
+/* =========================================================
+   MANUAL ADD EXPENSE
+   ========================================================= */
+
+void addExpenseManual(void)
+{
+    char category[30];
+    char description[100];
+
     float amount;
-    printf("\n--- Add Expense ---\n");
-    readString("Category (e.g. Utility Bill): ", category, sizeof(category));
-    amount = readFloat("Amount: ");
-    if (amount <= 0) { printf("Amount must be positive.\n"); return; }
-    readString("Description: ", desc, sizeof(desc));
-    int id = addExpenseAuto(category, amount, desc);
-    pushUndoAccount("ACCOUNT_EXPENSE", id);
-    printf("Expense of %.2f BDT recorded successfully. (Transaction #%d)\n", amount, id);
+
+    int transactionID;
+
+
+    printf("\n========== ADD EXPENSE ==========\n");
+
+
+    /* Get category */
+    readString(
+        "Enter category: ",
+        category,
+        sizeof(category)
+    );
+
+
+    /* Get amount */
+    amount = readFloat("Enter amount: ");
+
+
+    /* Check amount */
+    if (amount <= 0)
+    {
+        printf("Amount must be greater than 0.\n");
+        return;
+    }
+
+
+    /* Get description */
+    readString(
+        "Enter description: ",
+        description,
+        sizeof(description)
+    );
+
+
+    /* Add expense */
+    transactionID = addExpenseAuto(
+        category,
+        amount,
+        description
+    );
+
+
+    /* Save operation for Undo */
+    pushUndoAccount(
+        "ACCOUNT_EXPENSE",
+        transactionID
+    );
+
+
+    printf(
+        "Expense added successfully.\n"
+        "Amount: %.2f BDT\n"
+        "Transaction ID: %d\n",
+        amount,
+        transactionID
+    );
 }
 
-void viewTransactions(void) {
-    printf("\n%-5s %-8s %-18s %-10s %-12s %-s\n", "ID", "Type", "Category", "Amount", "Date", "Description");
-    printf("--------------------------------------------------------------------------------\n");
-    Transaction *cur = transactionHead;
-    if (cur == NULL) { printf("No transactions recorded yet.\n"); return; }
-    while (cur != NULL) {
-        printf("%-5d %-8s %-18s %-10.2f %-12s %-s\n", cur->id, cur->type, cur->category, cur->amount, cur->date, cur->description);
-        cur = cur->next;
+
+/* =========================================================
+   VIEW ALL TRANSACTIONS
+   ========================================================= */
+
+void viewTransactions(void)
+{
+    Transaction *current;
+
+    current = transactionHead;
+
+
+    printf("\n================ ALL TRANSACTIONS ================\n");
+
+    printf(
+        "%-5s %-8s %-18s %-10s %-12s %s\n",
+        "ID",
+        "Type",
+        "Category",
+        "Amount",
+        "Date",
+        "Description"
+    );
+
+    printf(
+        "--------------------------------------------------------------------------\n"
+    );
+
+
+    /* No transaction */
+    if (current == NULL)
+    {
+        printf("No transactions found.\n");
+        return;
+    }
+
+
+    /* Show every transaction */
+    while (current != NULL)
+    {
+        printf(
+            "%-5d %-8s %-18s %-10.2f %-12s %s\n",
+            current->id,
+            current->type,
+            current->category,
+            current->amount,
+            current->date,
+            current->description
+        );
+
+        current = current->next;
     }
 }
 
-void dailyAccounting(void) {
+
+/* =========================================================
+   DAILY ACCOUNTING
+   ========================================================= */
+
+void dailyAccounting(void)
+{
     char date[12];
-    readString("Enter date (DD-MM-YYYY) or press Enter for today: ", date, sizeof(date));
-    if (strlen(date) == 0) getCurrentDate(date);
 
-    float income = 0, expense = 0;
-    Transaction *cur = transactionHead;
-    printf("\n--- Accounting for %s ---\n", date);
-    while (cur != NULL) {
-        if (strcmp(cur->date, date) == 0) {
-            printf("[%s] %-18s %.2f BDT - %s\n", cur->type, cur->category, cur->amount, cur->description);
-            if (strcmp(cur->type, "INCOME") == 0) income += cur->amount;
-            else expense += cur->amount;
-        }
-        cur = cur->next;
+    float income = 0;
+    float expense = 0;
+
+    Transaction *current;
+
+
+    printf("\n========== DAILY ACCOUNTING ==========\n");
+
+
+    /* Ask for date */
+    readString(
+        "Enter date (DD-MM-YYYY) or press Enter for today: ",
+        date,
+        sizeof(date)
+    );
+
+
+    /* If user enters nothing, use today's date */
+    if (strlen(date) == 0)
+    {
+        getCurrentDate(date);
     }
-    printf("Total Income : %.2f BDT\n", income);
+
+
+    printf("\nAccounting for: %s\n", date);
+
+
+    current = transactionHead;
+
+
+    /* Check all transactions */
+    while (current != NULL)
+    {
+        /* Check whether date matches */
+        if (strcmp(current->date, date) == 0)
+        {
+            printf(
+                "[%s] %s - %.2f BDT - %s\n",
+                current->type,
+                current->category,
+                current->amount,
+                current->description
+            );
+
+
+            /* Add income */
+            if (strcmp(current->type, "INCOME") == 0)
+            {
+                income = income + current->amount;
+            }
+
+            /* Add expense */
+            else
+            {
+                expense = expense + current->amount;
+            }
+        }
+
+
+        current = current->next;
+    }
+
+
+    /* Show result */
+    printf("\nTotal Income : %.2f BDT\n", income);
     printf("Total Expense: %.2f BDT\n", expense);
-    printf("Net          : %.2f BDT\n", income - expense);
+    printf("Net Result   : %.2f BDT\n", income - expense);
 }
 
-void monthlyAccounting(void) {
-    int month, year;
+
+/* =========================================================
+   MONTHLY ACCOUNTING
+   ========================================================= */
+
+void monthlyAccounting(void)
+{
+    int month;
+    int year;
+
+    float income = 0;
+    float expense = 0;
+
+    int transactionCount = 0;
+
+    Transaction *current;
+
+
+    printf("\n========== MONTHLY ACCOUNTING ==========\n");
+
+
+    /* Get month and year */
     month = readInt("Enter month (1-12): ");
-    year = readInt("Enter year (e.g. 2026): ");
+    year = readInt("Enter year: ");
 
-    float income = 0, expense = 0;
-    int count = 0;
-    Transaction *cur = transactionHead;
-    printf("\n--- Accounting for %02d-%04d ---\n", month, year);
-    while (cur != NULL) {
-        int d, m, y;
-        sscanf(cur->date, "%d-%d-%d", &d, &m, &y);
-        if (m == month && y == year) {
-            count++;
-            if (strcmp(cur->type, "INCOME") == 0) income += cur->amount;
-            else expense += cur->amount;
+
+    printf(
+        "\nAccounting for %02d-%04d\n",
+        month,
+        year
+    );
+
+
+    current = transactionHead;
+
+
+    /* Check all transactions */
+    while (current != NULL)
+    {
+        int day;
+        int transactionMonth;
+        int transactionYear;
+
+
+        /*
+            Convert date:
+
+            DD-MM-YYYY
+
+            Example:
+            14-08-2026
+        */
+
+        sscanf(
+            current->date,
+            "%d-%d-%d",
+            &day,
+            &transactionMonth,
+            &transactionYear
+        );
+
+
+        /* Check month and year */
+        if (
+            transactionMonth == month &&
+            transactionYear == year
+        )
+        {
+            transactionCount++;
+
+
+            /* Add income */
+            if (
+                strcmp(current->type, "INCOME") == 0
+            )
+            {
+                income = income + current->amount;
+            }
+
+
+            /* Add expense */
+            else
+            {
+                expense = expense + current->amount;
+            }
         }
-        cur = cur->next;
+
+
+        current = current->next;
     }
-    printf("Transactions found: %d\n", count);
-    printf("Total Income : %.2f BDT\n", income);
-    printf("Total Expense: %.2f BDT\n", expense);
-    printf("Net Profit/Loss: %.2f BDT\n", income - expense);
+
+
+    /* Show result */
+    printf(
+        "Transactions found: %d\n",
+        transactionCount
+    );
+
+    printf(
+        "Total Income : %.2f BDT\n",
+        income
+    );
+
+    printf(
+        "Total Expense: %.2f BDT\n",
+        expense
+    );
+
+    printf(
+        "Net Profit/Loss: %.2f BDT\n",
+        income - expense
+    );
 }
 
-float totalIncome(void) {
+
+/* =========================================================
+   CALCULATE TOTAL INCOME
+   ========================================================= */
+
+float totalIncome(void)
+{
     float total = 0;
-    Transaction *cur = transactionHead;
-    while (cur != NULL) {
-        if (strcmp(cur->type, "INCOME") == 0) total += cur->amount;
-        cur = cur->next;
+
+    Transaction *current;
+
+    current = transactionHead;
+
+
+    while (current != NULL)
+    {
+        /* Only count income */
+        if (
+            strcmp(current->type, "INCOME") == 0
+        )
+        {
+            total = total + current->amount;
+        }
+
+        current = current->next;
     }
+
+
     return total;
 }
 
-float totalExpense(void) {
+
+/* =========================================================
+   CALCULATE TOTAL EXPENSE
+   ========================================================= */
+
+float totalExpense(void)
+{
     float total = 0;
-    Transaction *cur = transactionHead;
-    while (cur != NULL) {
-        if (strcmp(cur->type, "EXPENSE") == 0) total += cur->amount;
-        cur = cur->next;
+
+    Transaction *current;
+
+    current = transactionHead;
+
+
+    while (current != NULL)
+    {
+        /* Only count expense */
+        if (
+            strcmp(current->type, "EXPENSE") == 0
+        )
+        {
+            total = total + current->amount;
+        }
+
+        current = current->next;
     }
+
+
     return total;
 }
 
-void profitLoss(void) {
-    float income = totalIncome();
-    float expense = totalExpense();
-    printf("\n--- Profit / Loss Summary ---\n");
-    printf("Total Income : %.2f BDT\n", income);
-    printf("Total Expense: %.2f BDT\n", expense);
-    if (income - expense >= 0)
-        printf("Net Profit   : %.2f BDT\n", income - expense);
+
+/* =========================================================
+   PROFIT / LOSS
+   ========================================================= */
+
+void profitLoss(void)
+{
+    float income;
+    float expense;
+    float result;
+
+
+    /* Get total income */
+    income = totalIncome();
+
+
+    /* Get total expense */
+    expense = totalExpense();
+
+
+    /* Calculate profit/loss */
+    result = income - expense;
+
+
+    printf("\n========== PROFIT / LOSS ==========\n");
+
+    printf(
+        "Total Income : %.2f BDT\n",
+        income
+    );
+
+    printf(
+        "Total Expense: %.2f BDT\n",
+        expense
+    );
+
+
+    /* Profit */
+    if (result >= 0)
+    {
+        printf(
+            "Net Profit   : %.2f BDT\n",
+            result
+        );
+    }
+
+    /* Loss */
     else
-        printf("Net Loss     : %.2f BDT\n", expense - income);
+    {
+        printf(
+            "Net Loss     : %.2f BDT\n",
+            -result
+        );
+    }
 }
 
-void accountingMenu(void) {
+
+/* =========================================================
+   ACCOUNTING MENU
+   ========================================================= */
+
+void accountingMenu(void)
+{
     int choice;
-    do {
-        printf("\n======= ACCOUNTING MENU =======\n");
+
+
+    do
+    {
+        printf("\n====================================\n");
+        printf("          ACCOUNTING MENU\n");
+        printf("====================================\n");
+
         printf("1. Add Income\n");
         printf("2. Add Expense\n");
         printf("3. View Transactions\n");
@@ -200,19 +709,79 @@ void accountingMenu(void) {
         printf("7. Total Expense\n");
         printf("8. Profit/Loss\n");
         printf("9. Back to Main Menu\n");
+
+/* Get user choice */
         choice = readInt("Enter choice: ");
-        if (feof(stdin)) { printf("\nInput stream closed.\n"); break; }
-        switch (choice) {
-            case 1: addIncomeManual(); break;
-            case 2: addExpenseManual(); break;
-            case 3: viewTransactions(); break;
-            case 4: dailyAccounting(); break;
-            case 5: monthlyAccounting(); break;
-            case 6: printf("Total Income: %.2f BDT\n", totalIncome()); break;
-            case 7: printf("Total Expense: %.2f BDT\n", totalExpense()); break;
-            case 8: profitLoss(); break;
-            case 9: printf("Returning to Main Menu...\n"); break;
-            default: printf("Invalid choice. Try again.\n");
+
+        /* Stop if input stream closed (e.g. EOF from piped input) */
+        if (feof(stdin))
+        {
+            printf("\nInput stream closed.\n");
+            break;
         }
-    } while (choice != 9);
+
+        /* Perform selected operation */
+        switch (choice)
+        
+        {  case 1:
+                addIncomeManual();
+                break;
+
+
+            case 2:
+                addExpenseManual();
+                break;
+
+
+            case 3:
+                viewTransactions();
+                break;
+
+
+            case 4:
+                dailyAccounting();
+                break;
+
+
+            case 5:
+                monthlyAccounting();
+                break;
+
+
+            case 6:
+                printf(
+                    "\nTotal Income: %.2f BDT\n",
+                    totalIncome()
+                );
+                break;
+
+
+            case 7:
+                printf(
+                    "\nTotal Expense: %.2f BDT\n",
+                    totalExpense()
+                );
+                break;
+
+
+            case 8:
+                profitLoss();
+                break;
+
+
+            case 9:
+                printf(
+                    "Returning to Main Menu...\n"
+                );
+                break;
+
+
+            default:
+                printf(
+                    "Invalid choice. Please try again.\n"
+                );
+        }
+
+    }
+    while (choice != 9);
 }
