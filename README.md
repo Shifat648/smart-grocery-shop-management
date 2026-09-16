@@ -14,8 +14,8 @@ This project was developed collaboratively by a team of **3 members**.
 
 | Role            | Name                     | ID              | Contribution                                                                                                      |
 | --------------- | ------------------------ | --------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **Team Lead**   | **Md Shifat Uz Zaman**   | —                | Project planning, system architecture, core development, integration, testing, debugging, and final documentation |
-| **Team Member** | **Nusrat Jahan Laboni**  | 253-15-408       | Module development, testing, and documentation                                                                    |
+| **Team Lead**   | **Md Shifat Uz Zaman**   | 253-15-648      | Project planning, system architecture, core development, integration, testing, debugging, and final documentation |
+| **Team Member** | **Nusrat Jahan Laboni**  | 253-15-408      | Module development, testing, and documentation                                                                    |
 | **Team Member** | **Mymona Ethina**        | 253-15-618      | Module development, testing, and documentation                                                                    |
 
 
@@ -32,7 +32,7 @@ This project was developed collaboratively by a team of **3 members**.
 | 📅 **Expired Products**       | Detect expired and soon-to-expire products.                              |
 | ↩️ **Undo Last Operation**    | Reverse recent operations using a Stack.                                 |
 | 💵 **Accounting**             | Manage income, expenses, transactions, and profit/loss.                  |
-| 👨‍💼 **Employee Management** | Store employee information and salary records.                           |
+| 👨‍💼 **Employee Management** | Store employee information and salary records.                              |
 | 🕒 **Attendance Management**  | Mark and track employee attendance.                                      |
 | 📊 **Reports**                | Generate inventory, sales, purchase, accounting, and attendance reports. |
 | 💾 **Data Persistence**       | Automatically save and load data using `.dat` files.                     |
